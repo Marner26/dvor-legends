@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Russian Teen Chat</title>
+    <!-- Link your main CSS -->
+    <link rel="stylesheet" href="/style.css">
+    <!-- Optional: Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Russian Teen Chat 💬</h1>
+    </header>
+
+    <main>
+        <section id="chat-container">
+            <div id="messages">
+                <!-- Chat messages will appear here -->
+            </div>
+            <form id="chat-form">
+                <input type="text" id="username" placeholder="Your name" required>
+                <input type="text" id="message" placeholder="Type a message..." required>
+                <button type="submit">Send</button>
+            </form>
+        </section>
+
+        <section id="uploads-container">
+            <h2>Uploads</h2>
+            <input type="file" id="file-upload" multiple>
+            <div id="uploaded-files"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Russian Teen Chat. All rights reserved.</p>
+    </footer>
+
+    <!-- Link your main JS -->
+    <script src="/script.js"></script>
+    <!-- Optional: WebSocket or fetch to backend -->
+    <script>
+        const form = document.getElementById('chat-form');
+        const messagesDiv = document.getElementById('messages');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const message = document.getElementById('message').value.trim();
+
+            if (!username || !message) return;
+
+            // Send message to backend (adjust endpoint as needed)
+            await fetch('/send-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, message })
+            });
+
+            // Add message locally
+            const msgEl = document.createElement('div');
+            msgEl.classList.add('message');
+            msgEl.innerHTML = `<strong>${username}:</strong> ${message}`;
+            messagesDiv.appendChild(msgEl);
+
+            // Reset input
+            document.getElementById('message').value = '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // Optional: Fetch existing messages periodically
+        async function fetchMessages() {
+            const res = await fetch('/messages');
+            const data = await res.json();
+            messagesDiv.innerHTML = '';
+            data.forEach(msg => {
+                const msgEl = document.createElement('div');
+                msgEl.classList.add('message');
+                msgEl.innerHTML = `<strong>${msg.username}:</strong> ${msg.message}`;
+                messagesDiv.appendChild(msgEl);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        setInterval(fetchMessages, 2000);
+        fetchMessages();
+    </script>
+</body>
+</html>
