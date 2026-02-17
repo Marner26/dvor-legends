@@ -1,67 +1,48 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+// backend/server.js
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const path = require('path');
+const cors = require('cors');
+
+// Routes
+const authRoutes = require('./routes/auth');
+const groupRoutes = require('./routes/group');
+
+// Models
+require('./models/User');
+require('./models/Message');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const PORT = process.env.PORT || 3000;
 
-app.use(express.static("public"));
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-let players = {};
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/group', groupRoutes);
 
-io.on("connection", (socket) => {
-    console.log("Пользователь подключен:", socket.id);
-
-    socket.on("joinGame", (username) => {
-        if (!username) return;
-        players[socket.id] = {
-            username,
-            street: 0,
-            smart: 0,
-            meme: 0,
-            drip: 0
-        };
-        io.emit("chatMessage", { username: "Система", message: `${username} присоединился к игре! 🔥` });
-        updateAll();
-    });
-
-    socket.on("rapBattle", () => {
-        let player = players[socket.id];
-        if (!player) return;
-
-        let outcome = Math.random() > 0.5;
-        if (outcome) {
-            player.street += 5;
-            player.meme += 2;
-            player.drip += 1;
-            io.emit("chatMessage", { username: "Система", message: `${player.username} выиграл рэп баттл! Реп +5 🔥 Мемы +2 😂 Стиль +1 👕` });
-        } else {
-            player.street = Math.max(0, player.street - 2);
-            io.emit("chatMessage", { username: "Система", message: `${player.username} проиграл рэп баттл... Реп -2 😢` });
-        }
-
-        updateAll();
-    });
-
-    socket.on("chatMessage", (msg) => {
-        let player = players[socket.id];
-        if (!player || !msg.trim()) return;
-        io.emit("chatMessage", { username: player.username, message: msg });
-    });
-
-    socket.on("disconnect", () => {
-        let player = players[socket.id];
-        if (player) io.emit("chatMessage", { username: "Система", message: `${player.username} покинул игру.` });
-        delete players[socket.id];
-        updateAll();
-    });
-
-    function updateAll() {
-        io.emit("updatePlayers", players);
-        io.emit("updateLeaderboard", Object.values(players).sort((a, b) => b.street - a.street));
+// Catch-all route (works without path-to-regexp errors)
+app.use((req, res) => {
+  const indexPath = path.join(__dirname, '../frontend/index.html');
+  res.sendFile(indexPath, err => {
+    if (err) {
+      res.status(200).send('Frontend not found. Backend is running!');
     }
+  });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log("Сервер запущен на порту", PORT));
+// MongoDB connection
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/russian-teen-chat';
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
